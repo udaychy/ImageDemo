@@ -7,6 +7,6 @@ In case you need, you can go through [Jquery Tutorial][l_jquery_w3] and [JsStore
 We are just converting the image into base64 String and storing it in the Indexed DB as a string and use that string to display the image whereever needed
 
 
-[l_jsstore]: <jsstore.net>
+[l_jsstore]: <http://www.jsstore.net>
 [l_jquery_w3]: <https://www.w3schools.com/jquery/>
-[l_jsstore_tutorial]: <jsstore.net/Tutorial>
+[l_jsstore_tutorial]: <http://www.jsstore.net/Tutorial>
