@@ -229,7 +229,8 @@ $(function () {
         // deleteTable('ImageTable').
         clearTable('ImageTable').
         then(function () {
-            $("#uploadedImageList .panel-body").html("<div style='text-align:center;font-size:16px;color:#777;'>No Image Found</div>"), $("#btnClearImages").hide();
+            $("#uploadedImageList .panel-body").html("<div style='text-align:center;font-size:16px;color:#777;'>No Image Found</div>");
+			$("#btnClearImages").hide();
         });
     });
 
