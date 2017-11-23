@@ -1,4 +1,4 @@
-
+var conn = new JsStore.Instance();
 var isNullOrEmpty = function (item) {
     return item == undefined || item == null || $.trim(item).length == 0;
 }
@@ -22,8 +22,7 @@ var imageExt = new Array(".jpg", ".jpeg", ".png", ".bmp");
 var getTablesSchema = function () {
     var image = {
         Name: "ImageTable",
-        Columns: [
-            {
+        Columns: [{
                 Name: "ImageId",
                 PrimaryKey: true,
                 AutoIncrement: true
@@ -56,95 +55,57 @@ var getDBStructure = function (dbName, tableSchema) {
 }
 
 var getDbConnection = function (database) {
-    var deferredObject = $.Deferred();
-    var conn;
-
-    if (isNullOrEmpty(database) || isNullOrEmpty(database.Name)) {
-        alert("No DB found while creating connection");
-        deferredObject.resolve(null);
-    } else {
-        JsStore.isDbExist(database.Name, function (isExist) {
-            conn = isExist ? new JsStore.Instance(database.Name) : new JsStore.Instance().createDb(database);
-            deferredObject.resolve(conn);
-        });
-    }
-
-    return deferredObject;
-}
-
-var deleteTable = function (connection, tableName) {
-    var deferred = $.Deferred();
-    connection.delete({
-        From: tableName,
-        OnSuccess: function (rowsDeleted) {
-            deferred.resolve(true);
-        },
-        OnError: function (error) {
-            alert(error.value);
+    JsStore.isDbExist(database.Name).
+    then(function (isExist) {
+        if (isExist) {
+            conn.openDb(database.Name);
+        } else {
+            conn.createDb(database);
         }
+    }).
+    catch(function (err) {
+        alert(err.Message);
+        console.log(err);
     });
-    return deferred;
 }
 
-var saveImageToDB = function (connection, imageName, imageContent) {
-    var deferred = $.Deferred();
-    if (isNullOrEmpty(connection)) {
-        alert("No connection found while saving image to DB")
-        return;
-    }
+var deleteTable = function (tableName) {
+    return conn.delete({
+        From: tableName
+    });
+}
 
-    connection.insert({
+var clearTable = function (tableName) {
+    return conn.clear(tableName)
+}
+
+var saveImageToDB = function (imageName, imageContent) {
+    return conn.insert({
         Into: "ImageTable",
         Values: [{
-                       ImageName: imageName,
-                       ImageContent: imageContent
-                 }],
-        OnSuccess: function (rowsAffected) {
-            deferred.resolve(rowsAffected);
-
-        },
-        OnError: function (error) {
-            alert(error.value);
-        }
+            ImageName: imageName,
+            ImageContent: imageContent
+        }]
     });
-    return deferred;
 }
 
-var getImages = function (connection) {
-    var deferred = $.Deferred();
-    connection.select({
+var getImages = function () {
+    return conn.select({
         From: "ImageTable",
         Order: {
             By: 'ImageId',
             Type: 'desc'
-        },
-        OnSuccess: function (results) {
-            deferred.resolve(results);
-
-        },
-        OnError: function (error) {
-            alert(error.value);
         }
     });
-    return deferred;
 }
 
-var getImageById = function (connection, imageId) {
-    var deferred = $.Deferred();
-    connection.select({
+var getImageById = function (imageId) {
+    return conn.select({
         From: "ImageTable",
         Where: {
             ImageId: Number(imageId)
-        },
-        OnSuccess: function (results) {
-            deferred.resolve(results);
-
-        },
-        OnError: function (error) {
-            alert(error.value);
         }
     });
-    return deferred;
 }
 
 
@@ -207,8 +168,9 @@ var uploadImage = function (file) {
     }
 }
 
-var updateImageList = function (connection) {
-    getImages(connection).done(function (images) {
+var updateImageList = function () {
+    getImages().
+    then(function (images) {
         $("#uploadedImageList .panel-body").html("");
         if (images.length == 0) {
             $("#uploadedImageList .panel-body").html("<div style='text-align:center;font-size:16px;color:#777;'>No Image Found</div>");
@@ -219,26 +181,22 @@ var updateImageList = function (connection) {
             });
             $("#btnClearImages").show();
         }
-
     });
 }
 
 $(function () {
     var connection;
 
-    getDbConnection(getDBStructure("MyDb", getTablesSchema())).done(function (conn) {
-        isNullOrEmpty(conn) && alert("No Connection found");
-        connection = conn;
-        updateImageList(connection);
-    });
+    getDbConnection(getDBStructure("MyDb", getTablesSchema()));
+    updateImageList();
 
     // Drag and Drop Upload
     var $form = $('#divDragDrop');
     if (isAdvancedUpload) {
         $form.on('drag dragstart dragend dragover dragenter dragleave drop', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        })
+                e.preventDefault();
+                e.stopPropagation();
+            })
             .on('dragover dragenter', function () {
                 $form.addClass('is-dragover');
             })
@@ -252,8 +210,9 @@ $(function () {
 
     //events
     $("#addImage").click(function () {
-        saveImageToDB(connection, imageToUpload.FileName, imageToUpload.Content).done(function (rowsAffected) {
-            rowsAffected > 0 && updateImageList(connection);
+        saveImageToDB(imageToUpload.FileName, imageToUpload.Content).
+        then(function (rowsAffected) {
+            rowsAffected > 0 && updateImageList();
             $("#imageToUploadOuter").hide();
             $("#inputImageUpload").val("");
         });
@@ -267,21 +226,25 @@ $(function () {
     });
 
     $("#btnClearImages").click(function () {
-        deleteTable(connection, 'ImageTable').done(function (isDropped) {
-            isDropped && ($("#uploadedImageList .panel-body").html("<div style='text-align:center;font-size:16px;color:#777;'>No Image Found</div>"), $("#btnClearImages").hide());
+        // deleteTable('ImageTable').
+        clearTable('ImageTable').
+        then(function () {
+            $("#uploadedImageList .panel-body").html("<div style='text-align:center;font-size:16px;color:#777;'>No Image Found</div>");
+			$("#btnClearImages").hide();
         });
     });
 
     $(document).on("click", "#uploadedImageList .image-thumbnail", function () {
-        getImageById(connection, $(this).attr("data-id")).done(function (image) {
-            if (image.length > 0) {
-                $("#selectedImagePreview").modal();
-                $("#selectedImagePreview .modal-body").html('<img src="' + image[0].ImageContent + '"/>')
-                $("#selectedImagePreview .modal-footer").html('<div style="text-align:center"><b>' + image[0].ImageName + '</b></div>')
-            } else {
-                alert("Image not found in DB");
-            }
-        })
+        getImageById($(this).attr("data-id"))
+            .then(function (image) {
+                if (image.length > 0) {
+                    $("#selectedImagePreview").modal();
+                    $("#selectedImagePreview .modal-body").html('<img src="' + image[0].ImageContent + '"/>')
+                    $("#selectedImagePreview .modal-footer").html('<div style="text-align:center"><b>' + image[0].ImageName + '</b></div>')
+                } else {
+                    alert("Image not found in DB");
+                }
+            })
 
     })
 });
