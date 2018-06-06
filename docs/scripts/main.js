@@ -1,5 +1,5 @@
 var dbName = "ImageLibrary";
-var conn = new JsStore.Instance(new Worker('/scripts/jsstore.worker.min.js'));
+var conn = new JsStore.Instance(new Worker('./scripts/jsstore.worker.min.js'));
 // keep the info of the image to be uploaded
 var imageToUpload = {};
 
